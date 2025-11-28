@@ -1,7 +1,7 @@
 # 璀璨对决（Splendor Duel）网页版
 
 <div align="center">
-  <img src="./images/apperance.jpg" alt="Game Appearance" width="48%" />
+  <img src="./images/title.jpg" alt="Game Appearance" width="70%" />
 </div>
 
 ## 开发辅助
