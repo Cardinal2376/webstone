@@ -332,6 +332,7 @@ export default function SplendorDuel() {
   const [privilegeAvailable, setPrivilegeAvailable] = useState(3); 
   const [hasRefilled, setHasRefilled] = useState(false);
   const [logs, setLogs] = useState([]); // Game logs
+  const [isProcessing, setIsProcessing] = useState(false); // Prevent rapid clicks
 
   // Temp state for Stick ability (attaching card)
   const [pendingStickCard, setPendingStickCard] = useState(null);
@@ -344,7 +345,13 @@ export default function SplendorDuel() {
 
   const addLog = (text) => {
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      setLogs(prev => [{ id: Date.now(), time, text }, ...prev]);
+      setLogs(prev => {
+          // Filter duplicates within last 2 seconds
+          if (prev.length > 0 && prev[0].text === text && (Date.now() - prev[0].timestamp < 2000)) {
+              return prev;
+          }
+          return [{ id: Date.now() + Math.random(), timestamp: Date.now(), time, text }, ...prev];
+      });
   };
 
   const exportGame = () => {
@@ -659,15 +666,15 @@ export default function SplendorDuel() {
   const usePrivilege = () => {
     if (phase !== 'OPTIONAL') return;
     if (currentPlayer.privileges <= 0) {
-      alert("你没有特权卷轴！");
+      alert("你没有卷轴！");
       return;
     }
     if (hasRefilled) {
-        alert("本回合已补充过棋盘，无法再使用特权（顺序限制）。");
+        alert("本回合已补充过棋盘，无法再使用卷轴（顺序限制）。");
         return;
     }
     saveState(); // Save before action
-    setMessage("使用特权：请点击棋盘上的一个宝石或珍珠（不可选黄金）。");
+    setMessage("使用卷轴：请点击棋盘上的一个宝石或珍珠（不可选黄金）。");
     setPhase('USE_PRIVILEGE');
   };
 
@@ -690,8 +697,8 @@ export default function SplendorDuel() {
     setBoard(newBoard);
     setPlayers(newPlayers);
     setPhase('OPTIONAL'); 
-    addLog(`${p.name} 使用特权，拿取了一个 ${COLOR_MAP[token].name}`);
-    setMessage("特权使用完毕。");
+    addLog(`${p.name} 使用卷轴，拿取了一个 ${COLOR_MAP[token].name}`);
+    setMessage("卷轴使用完毕。");
   };
 
   const refillBoard = () => {
@@ -734,8 +741,8 @@ export default function SplendorDuel() {
     }
     
     setPlayers(newPlayers);
-    addLog(`${players[turn].name} 补充了棋盘，对手获得一个特权`);
-    setMessage("棋盘已补充，对手获得一个特权卷轴。");
+    addLog(`${players[turn].name} 补充了棋盘，对手获得一个卷轴`);
+    setMessage("棋盘已补充，对手获得一个卷轴。");
   };
 
   const isValidSelection = (indices) => {
@@ -838,12 +845,14 @@ export default function SplendorDuel() {
   };
 
   const confirmTakeTokens = () => {
+    if (isProcessing) return;
     if (selectedCells.length === 0) return;
     if (!isValidSelection(selectedCells)) {
         alert("选择无效！必须是同一行、同一列或对角线上的连续代币。");
         return;
     }
 
+    setIsProcessing(true);
 
     const tokensTaken = selectedCells.map(i => board[i]);
     const newPlayers = [...players];
@@ -868,11 +877,11 @@ export default function SplendorDuel() {
        if (privilegeAvailable > 0) {
          opp.privileges++;
          setPrivilegeAvailable(prev => prev - 1);
-         addLog(`触发特殊规则（同色/双珍珠）：对手获得一个特权`);
+         addLog(`触发特殊规则（同色/双珍珠）：对手获得一个卷轴`);
        } else if (p.privileges > 0) {
          opp.privileges++;
          p.privileges--;
-         addLog(`触发特殊规则（同色/双珍珠）：对手抢夺一个特权`);
+         addLog(`触发特殊规则（同色/双珍珠）：对手抢夺一个卷轴`);
        }
     }
 
@@ -885,6 +894,7 @@ export default function SplendorDuel() {
     addLog(`${p.name} 拿取了: ${desc}`);
     
     endTurn();
+    setIsProcessing(false);
   };
 
   const selectRoyal = (royal) => {
@@ -901,9 +911,9 @@ export default function SplendorDuel() {
         setPhase('OPTIONAL');
         setMessage("皇家奖励：再次行动！");
     } else if (royal.ability === 'take') {
-         handleAbility('take');
+         handleAbility('take', newPlayers, royal);
     } else if (royal.ability === 'privilege') {
-         handleAbility('privilege');
+         handleAbility('privilege', newPlayers, royal);
     } else {
         endTurn();
     }
@@ -940,9 +950,10 @@ export default function SplendorDuel() {
     // No, we setBoard BEFORE this. But we removed Gold.
     // So gold was taken if it was valid.
     
+    const cardInfo = `(${card.points}分${card.bonusColor ? ', ' + (COLOR_MAP[card.bonusColor]?.name || card.bonusColor) : ''})`;
     if (fromPyramid) {
       replaceCardInPyramid(card);
-      addLog(`${newPlayers[turn].name} 保留了一张 Level ${card.level} 卡牌${goldMsg}`);
+      addLog(`${newPlayers[turn].name} 保留了一张 Level ${card.level} 卡牌 ${cardInfo}${goldMsg}`);
     } else {
       addLog(`${newPlayers[turn].name} 盲抽保留了一张 Level ${card.level} 卡牌${goldMsg}`);
     }
@@ -952,38 +963,26 @@ export default function SplendorDuel() {
 
   const replaceCardInPyramid = (cardToRemove) => {
     const lvl = cardToRemove.level;
-    const newPyramid = { ...pyramid };
-    const newDecks = { ...decks };
+    const currentLevelCards = [...pyramid[lvl]];
+    const currentDeck = [...decks[lvl]];
     
-    const idx = newPyramid[lvl].findIndex(c => c.id === cardToRemove.id);
+    const idx = currentLevelCards.findIndex(c => c && c.id === cardToRemove.id);
     if (idx !== -1) {
-        if (newDecks[lvl].length > 0) {
-            newPyramid[lvl][idx] = newDecks[lvl].pop();
+        if (currentDeck.length > 0) {
+            currentLevelCards[idx] = currentDeck.pop();
         } else {
-            newPyramid[lvl][idx] = null; // Keep slot empty or filter? Rules usually say spaces are filled if possible. If deck empty, empty space remains.
-             // Filter out nulls to collapse? Splendor Duel board has fixed slots.
-             // If I use splice logic in render (map), I handle nulls?
-             // Current render code maps through array. If I set to null, I need to handle it in render.
-             // Let's just filter if deck is empty to collapse, OR keep empty slot.
-             // Simplest is filter for now unless layout breaks. 
-             // User said "stay in original position". Collapsing changes position.
-             // So I MUST keep slot if I want stable positions.
-             // But my render logic maps `pyramid[level].map`.
-             // If I set to null, I need to update render to handle null.
-             newPyramid[lvl][idx] = { ...newDecks[lvl].pop() || { id: 'empty', empty: true } }; 
-             if (newPyramid[lvl][idx].empty) newPyramid[lvl][idx] = null; // Actually pop returns undefined if empty.
+            currentLevelCards[idx] = null; 
         }
     }
-    // Clean up nulls if deck empty? No, keep layout stable.
-    // But if I set it to undefined/null, render will crash accessing properties.
-    // I need to update Render logic to skip nulls or render placeholder.
     
-    setPyramid(newPyramid);
-    setDecks(newDecks);
+    setPyramid(prev => ({ ...prev, [lvl]: currentLevelCards }));
+    setDecks(prev => ({ ...prev, [lvl]: currentDeck }));
   };
 
   // Buy
   const executeBuy = (card, isReserved) => {
+    if (isProcessing) return;
+    
     const { missing, payment } = calculateCost(card, currentPlayer);
     const playerGold = currentPlayer.tokens[COLORS.GOLD] || 0;
 
@@ -991,6 +990,8 @@ export default function SplendorDuel() {
       alert("资源不足！");
       return;
     }
+
+    setIsProcessing(true);
 
     if (phase === 'OPTIONAL') saveState();
 
@@ -1005,8 +1006,10 @@ export default function SplendorDuel() {
     const costStr = Object.entries(card.cost).map(([c, v]) => `${v}${COLOR_MAP[c].name}`).join(', ');
     const paidStr = Object.entries(payment).filter(([_,v])=>v>0).map(([c, v]) => `${v}${COLOR_MAP[c].name}`).join(', ');
     const goldStr = missing > 0 ? `，并使用了 ${missing}个黄金替代` : '';
-    const abilityStr = card.ability ? ` [功能:${card.ability}]` : '';
-    addLog(`${p.name} 购买了 Level ${card.level} 卡牌 (${card.points}分)${abilityStr}。原价: ${costStr}。支付: ${paidStr}${goldStr}。`);
+    const abilityMap = { recycle: '再次行动', add: '获得同色代币', take: '拿取对手代币', privilege: '拿取卷轴', stick: '复制颜色' };
+    const abilityStr = card.ability ? ` [功能:${abilityMap[card.ability] || card.ability}]` : '';
+    const bonusStr = card.bonusColor ? ` [奖励:${COLOR_MAP[card.bonusColor]?.name || card.bonusColor} x${card.bonusCount||1}]` : '';
+    addLog(`${p.name} 购买了 Level ${card.level} 卡牌 (${card.points}分)${bonusStr}${abilityStr}。原价: ${costStr}。支付: ${paidStr}${goldStr}。`);
 
     // Add card
     p.cards.push(card);
@@ -1029,46 +1032,40 @@ export default function SplendorDuel() {
     setPlayers(newPlayers);
     // Log moved up for detail access
 
+    setSelectedCard(null); // Auto close modal
     // Logic flow: Check Royal -> Check Ability -> End
-    checkRoyalAndAbility(p, card);
+    checkRoyalAndAbility(newPlayers, card);
+    setIsProcessing(false);
   };
 
-  const checkRoyalAndAbility = (player, card) => {
+  const checkRoyalAndAbility = (currentPlayers, card) => {
+      const player = currentPlayers[turn];
       // Check Royals
       const crowns = player.crowns;
-      // Simplified: if crossed 3 or 6 threshold. 
-      // Note: Since we just added crowns, we can check simple thresholds.
-      // But we need to know if we ALREADY took the royal for 3/6. 
-      // Let's assume royals are taken immediately.
-      // We need to know if this specific purchase triggered it.
-      // A simple way is to check: (crowns === 3 || crowns === 6) or just >= 3 and haven't taken.
-      // But player object doesn't track "royal taken". 
-      // Let's assume royals are scarce resources.
+      // Trigger if we hit 3 or 6 crowns exactly? Or just have enough.
+      // Assuming we handle "taken" logic by checking if we already have the royal? 
+      // The simplified logic: if (crowns >= 3 && preCrowns < 3) ...
+      // But we don't have preCrowns easily.
+      // Let's rely on the fact that we just added crowns.
+      // If we have >= 3 crowns and don't have a 3-crown royal? No.
+      // The prompt implied repetitive checks, maybe we should be careful.
+      // For now, keep the trigger logic simple but pass the updated players.
       
-      const triggerRoyal = (crowns >= 3 && player.crowns - card.crowns < 3) || 
-                           (crowns >= 6 && player.crowns - card.crowns < 6);
+      const triggerRoyal = (crowns >= 3 && crowns - card.crowns < 3) || 
+                           (crowns >= 6 && crowns - card.crowns < 6);
 
       if (triggerRoyal && royals.length > 0) {
           setPhase('ROYAL_SELECTION');
-          // Queue ability after royal? Or Royal implies ability? 
-          // Splendor duel: Royal action interrupts, then you continue.
-          // Card ability happens immediately after purchase. 
-          // If both, order: Card Ability -> Royal.
-          // Let's do Card Ability first.
+          // Note: We don't call setPlayers here because executeBuy already did, 
+          // and we haven't modified players further yet.
       }
       
       if (card.bonusColor === COLORS.GREY) {
-          // Stick ability (Grey card)
-          // Must select a color card to attach to.
-          // Set state to wait for selection.
           setPendingStickCard(card);
-          setPhase('STICK_SELECTION'); // New phase
+          setPhase('STICK_SELECTION');
           setMessage("请选择你的一张已有颜色卡牌进行关联 (Stick)");
-          // Warning: if no colored cards, what happens?
-          // Rule: "If you have no cards with a bonus, you cannot buy a card with this power."
-          // We should have checked this before buying.
       } else if (card.ability) {
-          handleAbility(card.ability);
+          handleAbility(card.ability, currentPlayers, card);
       } else if (triggerRoyal && royals.length > 0) {
           setPhase('ROYAL_SELECTION');
           setMessage("恭喜获得皇冠！请选择皇家卡。");
@@ -1077,16 +1074,18 @@ export default function SplendorDuel() {
       }
   };
 
-  const handleAbility = (ability) => {
-      const newPlayers = [...players];
-      const p = newPlayers[turn];
-      const opp = newPlayers[turn === 0 ? 1 : 0];
+  const handleAbility = (ability, passedPlayers = null, card = null) => {
+      // Use passedPlayers if available (from executeBuy), else clone state
+      const activePlayers = passedPlayers ? [...passedPlayers] : [...players];
+      const p = activePlayers[turn];
+      const opp = activePlayers[turn === 0 ? 1 : 0];
 
       if (ability === 'recycle') { // AGAIN
           setMessage("再次行动！");
           addLog(`${p.name} 触发能力：再次行动`);
-          setPhase('OPTIONAL'); // Reset to optional for same player
-          // Do not end turn
+          setPhase('OPTIONAL'); 
+          // Ensure players are updated if we modified them (we didn't here, but consistent)
+          if(passedPlayers) setPlayers(activePlayers);
       } else if (ability === 'privilege') {
           if (privilegeAvailable > 0) {
               p.privileges++;
@@ -1095,54 +1094,36 @@ export default function SplendorDuel() {
               opp.privileges--;
               p.privileges++;
           }
-          addLog(`${p.name} 触发能力：获得特权`);
-          setPlayers(newPlayers);
+          addLog(`${p.name} 触发能力：获得卷轴`);
+          setPlayers(activePlayers);
           checkRoyalAfterAbility();
       } else if (ability === 'take') { // Steal
-          // Selection Mode
           setPhase('STEAL_SELECTION');
           setMessage("能力触发：请点击对手的一枚代币（非黄金）进行偷取。");
-          // checkRoyalAfterAbility will be called after selection
+          if(passedPlayers) setPlayers(activePlayers);
       } else if (ability === 'add') { // Bonus Token
-          // Logic: Player picks a token from BOARD matching the card's bonus color.
-          // If card has bonusColor (not Stick), use that. 
-          // If Stick, we need the attached color. But Stick ability happens after stick selection?
-          // Wait, Stick card has 'stick' ability usually? No, Stick card has NO ability usually, it HAS ability 'stick'?
-          // In CSV: Stick cards have function 'none' or 'recycle' or 'none'. 
-          // Wait, look at CSV:
-          // Line 70: Stick, func='none'. Line 112: Stick, func='recycle'.
-          // There are NO Stick cards with 'add' ability in provided CSV.
-          // However, normal cards have 'add'. 
-          // Normal cards always have a fixed bonusColor.
-          // So we can use card.bonusColor.
-          
-          // Exception: If board has no such token? Then ability is lost.
-          // We need to check if board has it.
-          // But wait, which card? 'checkRoyalAndAbility' passed 'card'.
-          // But 'handleAbility' just got string.
-          // I need to pass card to handleAbility to know the color!
-          // Refactor handleAbility to take card.
-          
-          // Fallback: Assume the caller passed the card object if available, or we find it from last bought?
-          // Let's change handleAbility signature in the call site first.
-          
-          // Actually, I can find the card from player's last added card? Yes.
-          const lastCard = p.cards[p.cards.length - 1];
-          const targetColor = lastCard.bonusColor;
+          // Use the passed card to determine color
+          const targetCard = card || p.cards[p.cards.length - 1];
+          const targetColor = targetCard ? targetCard.bonusColor : null;
           
           if (targetColor && targetColor !== COLORS.GREY) {
               if (board.includes(targetColor)) {
                   setPendingAddTokenColor(targetColor);
                   setPhase('ADD_TOKEN_SELECTION');
                   setMessage(`能力触发：请从棋盘上拿取一个 ${COLOR_MAP[targetColor].name}`);
+                  if(passedPlayers) setPlayers(activePlayers);
               } else {
                   addLog(`能力触发失败：棋盘上没有 ${COLOR_MAP[targetColor].name}`);
+                  // If failed, we still need to save the player state from executeBuy!
+                  if(passedPlayers) setPlayers(activePlayers);
                   checkRoyalAfterAbility();
               }
           } else {
+              if(passedPlayers) setPlayers(activePlayers);
               checkRoyalAfterAbility();
           }
       } else {
+          if(passedPlayers) setPlayers(activePlayers);
           checkRoyalAfterAbility();
       }
   };
@@ -1276,6 +1257,19 @@ export default function SplendorDuel() {
                     <RotateCcw size={18} className="scale-x-[-1]" />
                     <span className="text-sm font-bold">重做</span>
                 </button>
+                <button 
+                    onClick={() => {
+                        if(confirm('确定要强制跳过回合吗？')) {
+                            addLog(`${players[turn].name} 强制跳过了回合`);
+                            endTurn();
+                        }
+                    }}
+                    className="flex items-center gap-1 text-red-500 hover:text-red-700 transition-colors ml-2"
+                    title="强制跳过回合 (解决卡死问题)"
+                >
+                    <Play size={18} />
+                    <span className="text-sm font-bold">跳过</span>
+                </button>
                 <div className="w-px h-4 bg-slate-300 mx-1"></div>
                 <button 
                     onClick={exportGame}
@@ -1312,7 +1306,7 @@ export default function SplendorDuel() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-7xl mx-auto">
         
         {/* 左侧：金字塔 */}
-        <div className="lg:col-span-4 space-y-3 order-2 lg:order-1">
+        <div className="lg:col-span-4 space-y-3 order-2 lg:order-1 overflow-y-auto max-h-[calc(100vh-100px)] pb-20">
           {[3, 2, 1].map(level => (
             <div key={level} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center mb-2 px-1">
@@ -1429,7 +1423,7 @@ export default function SplendorDuel() {
                                 <div className="absolute top-1 right-1 bg-pink-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">{currentPlayer.privileges}</div>
                             )}
                             <Scroll size={24} className="mb-1" />
-                            <span className="text-[10px] font-bold">特权</span>
+                            <span className="text-[10px] font-bold">卷轴</span>
                         </button>
                     </>
                 )}
@@ -1493,7 +1487,7 @@ export default function SplendorDuel() {
             </div>
 
             {/* Log Panel (New) */}
-            <div className="w-full bg-white/50 rounded-xl border border-slate-200 max-h-32 overflow-y-auto p-2 text-xs text-slate-600 shadow-inner">
+            <div className="w-full bg-white/50 rounded-xl border border-slate-200 max-h-32 overflow-y-auto p-2 text-xs text-slate-600 shadow-inner select-text">
                 <div className="font-bold text-slate-400 mb-1 sticky top-0 bg-white/80 backdrop-blur-sm px-1">游戏记录</div>
                 <div className="flex flex-col gap-1">
                     {logs.slice().sort((a, b) => b.id - a.id).map(log => (
