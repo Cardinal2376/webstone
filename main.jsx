@@ -955,6 +955,11 @@ export default function SplendorDuel() {
       replaceCardInPyramid(card);
       addLog(`${newPlayers[turn].name} 保留了一张 Level ${card.level} 卡牌 ${cardInfo}${goldMsg}`);
     } else {
+      setDecks(prev => {
+        const newDeck = [...prev[card.level]];
+        newDeck.pop();
+        return { ...prev, [card.level]: newDeck };
+      });
       addLog(`${newPlayers[turn].name} 盲抽保留了一张 Level ${card.level} 卡牌${goldMsg}`);
     }
     
