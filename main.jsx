@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import zhubaoImg from './images/zhubao.jpg';
+import meibaoImg from './images/meibao.jpg';
 import { Crown, Diamond, Scroll, RefreshCw, Trophy, AlertCircle, Play, Save, X, RotateCcw, Check, Hexagon, Hand } from 'lucide-react';
 
 // --- 常量定义 ---
@@ -204,7 +206,7 @@ const EditableName = ({ name, onChange, isCurrent }) => {
           type="text" 
           value={tempName}
           onChange={(e) => setTempName(e.target.value)}
-          className="text-sm font-bold text-slate-800 w-24 px-1 py-0.5 rounded border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="text-base font-bold text-slate-800 w-32 px-1 py-0.5 rounded border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
           autoFocus
           onBlur={handleSave}
           onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -216,7 +218,7 @@ const EditableName = ({ name, onChange, isCurrent }) => {
   return (
     <span 
       onClick={() => setIsEditing(true)}
-      className={`font-bold text-lg cursor-pointer hover:underline decoration-dashed underline-offset-4 ${isCurrent ? 'text-slate-800' : 'text-slate-500'}`}
+      className={`font-bold text-xl cursor-pointer hover:underline decoration-dashed underline-offset-4 ${isCurrent ? 'text-slate-800' : 'text-slate-500'}`}
       title="点击修改名字"
     >
       {name}
@@ -224,8 +226,32 @@ const EditableName = ({ name, onChange, isCurrent }) => {
   );
 };
 
+const FloatingText = ({ text, x, y, color = 'text-yellow-500' }) => {
+    const [visible, setVisible] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setVisible(false), 1500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!visible) return null;
+
+    return (
+        <div 
+            className={`fixed pointer-events-none z-[100] font-black text-2xl drop-shadow-md animate-float-up ${color}`}
+            style={{ left: x, top: y }}
+        >
+            {text}
+        </div>
+    );
+};
+
 const TokenIcon = ({ color, size = 'md', className = '', count }) => {
-  const sizeClass = size === 'sm' ? 'w-5 h-5' : (size === 'lg' ? 'w-10 h-10 md:w-12 md:h-12' : 'w-7 h-7');
+  let sizeClass = 'w-8 h-8'; // default md
+  if (size === 'sm') sizeClass = 'w-6 h-6';
+  if (size === 'lg') sizeClass = 'w-12 h-12 md:w-14 md:h-14';
+  if (size === 'xl') sizeClass = 'w-14 h-14 md:w-16 md:h-16';
+
   const bgClass = COLOR_MAP[color]?.bg || 'bg-gray-300';
   const ringClass = COLOR_MAP[color]?.ring || 'ring-gray-300';
   
@@ -235,12 +261,12 @@ const TokenIcon = ({ color, size = 'md', className = '', count }) => {
   return (
     <div className={`relative ${className}`}>
         <div className={`${bgClass} ${sizeClass} rounded-full border-2 border-white/80 shadow-md flex items-center justify-center ${isSpecial ? 'ring-2 ' + ringClass : ''}`} title={COLOR_MAP[color]?.name || color}>
-        {color === COLORS.GOLD && <span className="text-[10px] text-yellow-900 font-black">G</span>}
-        {color === COLORS.PEARL && <span className="text-[10px] text-pink-900 font-black">P</span>}
-        {color === COLORS.GREY && <span className="text-[10px] text-stone-700 font-bold">?</span>}
+        {color === COLORS.GOLD && <span className="text-xs md:text-sm text-yellow-900 font-black">G</span>}
+        {color === COLORS.PEARL && <span className="text-xs md:text-sm text-pink-900 font-black">P</span>}
+        {color === COLORS.GREY && <span className="text-xs text-stone-700 font-bold">?</span>}
         </div>
         {count !== undefined && (
-            <div className="absolute -top-1 -right-1 bg-slate-800 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center border border-white font-bold shadow-sm">
+            <div className="absolute -top-1.5 -right-1.5 bg-slate-800 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center border border-white font-bold shadow-sm">
                 {count}
             </div>
         )}
@@ -254,7 +280,7 @@ const CardView = ({ card, onClick, canBuy, isReserved = false, isSelected = fals
   return (
     <div 
       onClick={onClick}
-      className={`relative w-24 h-32 rounded-lg border flex flex-col justify-between p-1.5 cursor-pointer transition-all hover:-translate-y-1 shadow-sm
+      className={`relative w-24 h-32 rounded-lg border flex flex-col justify-between p-1 cursor-pointer transition-all hover:-translate-y-1 shadow-sm
         ${isSelected ? 'ring-4 ring-yellow-400 scale-105 z-10' : ''}
         ${canBuy ? 'border-green-500 shadow-green-200' : 'border-slate-200'}
         ${isReserved ? 'bg-yellow-50' : 'bg-white/90'}
@@ -262,17 +288,17 @@ const CardView = ({ card, onClick, canBuy, isReserved = false, isSelected = fals
     >
       {/* Header: Points & Crown */}
       <div className="flex justify-between items-start">
-        <span className="font-black text-xl leading-none text-slate-800 drop-shadow-sm">{card.points > 0 ? card.points : ''}</span>
+        <span className="font-black text-2xl leading-none text-slate-800 drop-shadow-sm">{card.points > 0 ? card.points : ''}</span>
         {card.crowns > 0 && (
           <div className="flex flex-col items-center -mt-0.5">
-            {[...Array(card.crowns)].map((_, i) => <Crown key={i} size={10} className="text-yellow-600 fill-current mb-[-2px]" />)}
+            {[...Array(card.crowns)].map((_, i) => <Crown key={i} size={12} className="text-yellow-600 fill-current mb-[-2px]" />)}
           </div>
         )}
         {/* Bonus Jewel */}
         {card.bonusColor && (
-           <div className={`w-5 h-5 rounded border border-black/10 ${COLOR_MAP[card.bonusColor]?.bg || 'bg-gray-300'} shadow-sm flex items-center justify-center`}>
-             {card.bonusCount > 1 && <span className="text-[10px] font-bold text-white/90">{card.bonusCount}</span>}
-             {card.bonusColor === COLORS.GREY && <span className="text-[8px] font-bold text-stone-700">?</span>}
+           <div className={`w-6 h-6 rounded border border-black/10 ${COLOR_MAP[card.bonusColor]?.bg || 'bg-gray-300'} shadow-sm flex items-center justify-center`}>
+             {card.bonusCount > 1 && <span className="text-xs font-bold text-white/90">{card.bonusCount}</span>}
+             {card.bonusColor === COLORS.GREY && <span className="text-[10px] font-bold text-stone-700">?</span>}
            </div>
         )}
       </div>
@@ -280,11 +306,11 @@ const CardView = ({ card, onClick, canBuy, isReserved = false, isSelected = fals
       {/* Ability Icon */}
       {card.ability && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 rounded-full p-1 shadow-sm border border-slate-100">
-          {card.ability === 'recycle' && <RefreshCw size={14} className="text-indigo-600" />}
-          {card.ability === 'privilege' && <Scroll size={14} className="text-pink-600" />}
-          {card.ability === 'take' && <Hand size={14} className="text-red-600" />}
-          {card.ability === 'add' && <Hexagon size={14} className="text-green-600 fill-green-100" />}
-          {card.ability === 'stick' && <div className="text-[10px] font-bold text-stone-600">粘</div>}
+          {card.ability === 'recycle' && <RefreshCw size={18} className="text-indigo-600" />}
+          {card.ability === 'privilege' && <Scroll size={18} className="text-pink-600" />}
+          {card.ability === 'take' && <Hand size={18} className="text-red-600" />}
+          {card.ability === 'add' && <Hexagon size={18} className="text-green-600 fill-green-100" />}
+          {card.ability === 'stick' && <div className="text-xs font-bold text-stone-600">粘</div>}
         </div>
       )}
 
@@ -293,7 +319,7 @@ const CardView = ({ card, onClick, canBuy, isReserved = false, isSelected = fals
         {costEntries.map(([color, count]) => {
           const isLight = color === COLORS.WHITE || color === COLORS.PEARL || color === COLORS.GOLD;
           return (
-            <div key={color} className={`rounded-full px-1.5 py-[1px] text-[9px] font-bold flex items-center gap-0.5 shadow-sm ${COLOR_MAP[color]?.bg} ${isLight ? 'text-slate-900 border border-slate-300' : 'text-white'}`}>
+            <div key={color} className={`rounded-full px-1.5 py-[1px] text-[11px] font-bold flex items-center gap-0.5 shadow-sm ${COLOR_MAP[color]?.bg} ${isLight ? 'text-slate-900 border border-slate-300' : 'text-white'}`}>
               {count}
             </div>
           );
@@ -333,6 +359,25 @@ export default function SplendorDuel() {
   const [hasRefilled, setHasRefilled] = useState(false);
   const [logs, setLogs] = useState([]); // Game logs
   const [isProcessing, setIsProcessing] = useState(false); // Prevent rapid clicks
+
+  // Animation State
+  const [animations, setAnimations] = useState([]); // [{ id, text, x, y, color }]
+
+  const showAnimation = (text, selector, colorClass = 'text-yellow-500', offsetX = 0, offsetY = 0) => {
+      const el = document.querySelector(selector);
+      if (el) {
+          const rect = el.getBoundingClientRect();
+          const x = rect.left + rect.width / 2 + offsetX;
+          const y = rect.top + rect.height / 2 + offsetY;
+          const id = Date.now() + Math.random();
+          setAnimations(prev => [...prev, { id, text, x, y, color: colorClass }]);
+          
+          // Auto remove from state after duration
+          setTimeout(() => {
+              setAnimations(prev => prev.filter(a => a.id !== id));
+          }, 1500);
+      }
+  };
 
   // Temp state for Stick ability (attaching card)
   const [pendingStickCard, setPendingStickCard] = useState(null);
@@ -859,8 +904,18 @@ export default function SplendorDuel() {
     const p = newPlayers[turn];
     const opp = newPlayers[turn === 0 ? 1 : 0];
 
+    // Aggregate token counts for animation
+    const tokenCounts = {};
     tokensTaken.forEach(t => {
-      p.tokens[t] = (p.tokens[t] || 0) + 1;
+        p.tokens[t] = (p.tokens[t] || 0) + 1;
+        tokenCounts[t] = (tokenCounts[t] || 0) + 1;
+    });
+
+    // Trigger animations
+    Object.entries(tokenCounts).forEach(([color, count], index) => {
+        setTimeout(() => {
+             showAnimation(`+${count}`, `#player-${p.id}-token-${color}`, 'text-green-500', 0, -10);
+        }, index * 150);
     });
 
     const newBoard = [...board];
@@ -1018,6 +1073,18 @@ export default function SplendorDuel() {
 
     // Add card
     p.cards.push(card);
+    
+    // Animations for card gain
+    if (card.bonusColor) {
+        showAnimation(`+1`, `#player-${p.id}-bonus-${card.bonusColor}`, 'text-blue-600', 0, -20);
+    }
+    if (card.points > 0) {
+        showAnimation(`+${card.points}`, `#player-${p.id}-points`, 'text-blue-600', 0, -20);
+    }
+    if (card.crowns > 0) {
+         showAnimation(`+${card.crowns}`, `#player-${p.id}-crowns`, 'text-yellow-600', 0, -20);
+    }
+
     p.points += card.points;
     p.crowns += card.crowns;
 
@@ -1171,6 +1238,10 @@ export default function SplendorDuel() {
       if (opp.tokens[color] > 0 && color !== COLORS.GOLD) {
           opp.tokens[color]--;
           p.tokens[color] = (p.tokens[color] || 0) + 1;
+          
+          showAnimation(`-1`, `#player-${opp.id}-token-${color}`, 'text-red-500', 0, -10);
+          showAnimation(`+1`, `#player-${p.id}-token-${color}`, 'text-green-500', 0, -10);
+
           setPlayers(newPlayers);
           setPhase('OPTIONAL'); // Or whatever next phase
           addLog(`${p.name} 偷取了对手一个 ${COLOR_MAP[color].name}`);
@@ -1189,6 +1260,8 @@ export default function SplendorDuel() {
           const newPlayers = [...players];
           newPlayers[turn].tokens[token] = (newPlayers[turn].tokens[token] || 0) + 1;
           
+          showAnimation(`+1`, `#player-${players[turn].id}-token-${token}`, 'text-green-500', 0, -10);
+
           setBoard(newBoard);
           setPlayers(newPlayers);
           setPendingAddTokenColor(null);
@@ -1226,17 +1299,27 @@ export default function SplendorDuel() {
 
   // --- 渲染 ---
 
-  return (
-    <div className="min-h-screen bg-sky-50 text-slate-900 font-sans p-2 md:p-4 select-none">
+    return (
+    <div className="min-h-screen bg-sky-50 text-slate-900 font-sans p-1 md:p-2 select-none text-base">
+      {animations.map(anim => (
+          <FloatingText key={anim.id} text={anim.text} x={anim.x} y={anim.y} color={anim.color} />
+      ))}
       
       {/* 顶部信息栏 */}
-      <div className="flex justify-between items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-3">
-           <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-2 rounded-lg shadow-md">
-               <Diamond size={20} />
-           </div>
+      <div className="flex justify-between items-center mb-2 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex items-center gap-2">
+           {/* <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-1.5 rounded-lg shadow-md">
+               <Diamond size={24} />
+           </div> */}
            <div>
-               <h1 className="text-xl font-black text-slate-800 tracking-tight">璀璨对决</h1>
+               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                   <span>璀璨宝石-猪妹对决</span>
+                   <div className="flex items-center gap-1 ml-1">
+                       <img src={zhubaoImg} className="w-8 h-8 rounded-full border-2 border-sky-400 object-cover shadow-sm" alt="Zhubao" />
+                       <span className="text-yellow-500 font-extrabold italic text-sm">⚡VS⚡</span>
+                       <img src={meibaoImg} className="w-8 h-8 rounded-full border-2 border-pink-400 object-cover shadow-sm" alt="Meibao" />
+                   </div>
+               </h1>
                <div className="text-xs text-slate-500 font-medium">SPLENDOR DUEL</div>
            </div>
         </div>
@@ -1250,8 +1333,8 @@ export default function SplendorDuel() {
                     className="flex items-center gap-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition-colors"
                     title="撤销上一步"
                 >
-                    <RotateCcw size={18} />
-                    <span className="text-sm font-bold">撤销</span>
+                    <RotateCcw size={20} />
+                    <span className="text-base font-bold">撤销</span>
                 </button>
                 <button 
                     onClick={redo}
@@ -1259,8 +1342,8 @@ export default function SplendorDuel() {
                     className="flex items-center gap-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition-colors"
                     title="重做 (向前)"
                 >
-                    <RotateCcw size={18} className="scale-x-[-1]" />
-                    <span className="text-sm font-bold">重做</span>
+                    <RotateCcw size={20} className="scale-x-[-1]" />
+                    <span className="text-base font-bold">重做</span>
                 </button>
                 <button 
                     onClick={() => {
@@ -1272,8 +1355,8 @@ export default function SplendorDuel() {
                     className="flex items-center gap-1 text-red-500 hover:text-red-700 transition-colors ml-2"
                     title="强制跳过回合 (解决卡死问题)"
                 >
-                    <Play size={18} />
-                    <span className="text-sm font-bold">跳过</span>
+                    <Play size={20} />
+                    <span className="text-base font-bold">跳过</span>
                 </button>
                 <div className="w-px h-4 bg-slate-300 mx-1"></div>
                 <button 
@@ -1281,26 +1364,26 @@ export default function SplendorDuel() {
                     className="flex items-center gap-1 text-slate-500 hover:text-blue-600 transition-colors"
                     title="导出完整游戏记录到剪贴板"
                 >
-                    <Save size={18} />
-                    <span className="text-sm font-bold">导出</span>
+                    <Save size={20} />
+                    <span className="text-base font-bold">导出</span>
                 </button>
                 <button 
                     onClick={importGame}
                     className="flex items-center gap-1 text-slate-500 hover:text-green-600 transition-colors"
                     title="导入游戏记录 (粘贴 JSON)"
                 >
-                    <Play size={18} />
-                    <span className="text-sm font-bold">导入</span>
+                    <Play size={20} />
+                    <span className="text-base font-bold">导入</span>
                 </button>
              </div>
 
             <div className="text-center">
                 {winner ? (
-                    <div className="text-orange-500 font-black text-lg animate-pulse">
+                    <div className="text-orange-500 font-black text-xl animate-pulse">
                         🏆 {winner.name} 获胜！ 🏆
                     </div>
                 ) : (
-                    <div className={`px-6 py-1.5 rounded-full font-bold text-sm shadow-sm transition-colors ${turn === 0 ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                    <div className={`px-6 py-1.5 rounded-full font-bold text-base shadow-sm transition-colors ${turn === 0 ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
                         当前回合: {players[turn].name}
                     </div>
                 )}
@@ -1308,92 +1391,83 @@ export default function SplendorDuel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-full max-w-7xl mx-auto">
         
         {/* 左侧：金字塔 */}
-        <div className="lg:col-span-4 space-y-3 order-2 lg:order-1 overflow-y-auto max-h-[calc(100vh-100px)] pb-20">
-          {[3, 2, 1].map(level => (
-            <div key={level} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex justify-between items-center mb-2 px-1">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Level {level}</span>
-                    <span className="text-xs text-slate-300">{decks[level].length} cards left</span>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                {/* Deck Draw Pile (for Reserve) */}
-                <div 
-                    className="w-24 h-32 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors group"
-                    onClick={() => {
-                        if(decks[level].length === 0) return;
-                        if (phase === 'MANDATORY' || phase === 'OPTIONAL') {
-                             // Create a placeholder card object for deck reservation
-                             const hiddenCard = { 
-                                 id: `deck-${level}-${Date.now()}`, 
-                                 level: level, 
-                                 isDeckCard: true, // Flag to identify source
-                                 points: '?', crowns: 0, cost: {}, 
-                                 bonusColor: null 
-                             };
-                             setSelectedCard({ card: hiddenCard, type: 'deck' });
-                        }
-                    }}
-                >
-                    <span className="font-black text-2xl text-slate-300 group-hover:text-slate-400">{level}</span>
-                    <span className="text-[10px] text-slate-400 font-bold">保留</span>
-                </div>
-
-                {/* Visible Cards */}
-                {pyramid[level].map((card, pIdx) => {
-                    if (!card) return <div key={`empty-${level}-${pIdx}`} className="w-24 h-32 rounded-lg border border-slate-100 bg-slate-50/50"></div>;
+        <div className="lg:col-span-5 space-y-4 order-2 lg:order-1 overflow-y-auto max-h-[calc(100vh-80px)] pb-20">
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            {[3, 2, 1].map(level => (
+                <div key={level} className="relative">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Level {level}</span>
+                            <button
+                                className="px-2 py-0.5 text-xs font-bold text-white bg-slate-400 rounded hover:bg-slate-500 transition-colors"
+                                onClick={() => {
+                                    if(decks[level].length === 0) return;
+                                    if (phase === 'MANDATORY' || phase === 'OPTIONAL') {
+                                            const hiddenCard = { 
+                                                id: `deck-${level}-${Date.now()}`, 
+                                                level: level, 
+                                                isDeckCard: true, 
+                                                points: '?', crowns: 0, cost: {}, 
+                                                bonusColor: null 
+                                            };
+                                            setSelectedCard({ card: hiddenCard, type: 'deck' });
+                                    }
+                                }}
+                                disabled={decks[level].length === 0}
+                            >
+                                抽牌库 ({decks[level].length})
+                            </button>
+                        </div>
+                    </div>
                     
-                    const {missing} = calculateCost(card, currentPlayer);
-                    const canBuy = missing <= (currentPlayer.tokens[COLORS.GOLD] || 0);
-                    const isSel = selectedCard && selectedCard.card.id === card.id;
-                    return (
-                        <CardView 
-                            key={card.id} 
-                            card={card} 
-                            canBuy={canBuy && (phase === 'MANDATORY' || phase === 'OPTIONAL')}
-                            isSelected={isSel}
-                            onClick={() => handleCardClick(card, 'board')}
-                        />
-                    );
-                })}
+                    <div className={`grid gap-3 justify-center ${level === 1 ? 'grid-cols-5' : 'grid-cols-5'}`}>
+                    {/* Visible Cards */}
+                    {pyramid[level].map((card, pIdx) => {
+                        if (!card) return <div key={`empty-${level}-${pIdx}`} className="w-24 h-32 rounded-lg border border-slate-100 bg-slate-50/50"></div>;
+                        
+                        const {missing} = calculateCost(card, currentPlayer);
+                        const canBuy = missing <= (currentPlayer.tokens[COLORS.GOLD] || 0);
+                        const isSel = selectedCard && selectedCard.card.id === card.id;
+                        return (
+                            <div key={card.id} className="flex justify-center">
+                                <CardView 
+                                    card={card} 
+                                    canBuy={canBuy && (phase === 'MANDATORY' || phase === 'OPTIONAL')}
+                                    isSelected={isSel}
+                                    onClick={() => handleCardClick(card, 'board')}
+                                />
+                            </div>
+                        );
+                    })}
+                    </div>
                 </div>
+            ))}
             </div>
-          ))}
         </div>
 
         {/* 中间：棋盘与控制 */}
-        <div className="lg:col-span-5 flex flex-col items-center gap-6 order-1 lg:order-2">
+        <div className="lg:col-span-4 flex flex-col items-center gap-6 order-1 lg:order-2">
             
             {/* 提示信息 */}
-            <div className={`px-6 py-3 rounded-full border flex items-center gap-3 shadow-sm w-full justify-center transition-colors
+            <div className={`px-6 py-2 rounded-full border flex items-center gap-3 shadow-sm w-full justify-center transition-colors z-20 relative
                 ${phase === 'DISCARD' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-white border-slate-200 text-slate-700'}
             `}>
-                <AlertCircle size={18} className={phase === 'DISCARD' ? 'text-red-500' : 'text-blue-500'} />
-                <span className="font-medium">{message}</span>
+                <AlertCircle size={20} className={phase === 'DISCARD' ? 'text-red-500' : 'text-blue-500'} />
+                <span className="font-bold text-lg">{message}</span>
             </div>
 
             {/* 棋盘区域 */}
-            <div className="relative">
-                {/* Privilege Display/Button */}
-                <div className="absolute -top-12 left-0 right-0 flex justify-center gap-2">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className={`transition-all duration-500 ${i < privilegeAvailable ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-                            <div className="bg-pink-100 p-1.5 rounded-lg shadow-sm border border-pink-200">
-                                <Scroll size={16} className="text-pink-600" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-5 gap-2.5 p-4 bg-[#eecfa1] rounded-2xl shadow-xl border-4 border-[#d2b48c]">
+            <div className="relative flex flex-col items-center">
+                <div className="grid grid-cols-5 gap-2 p-3 bg-[#eecfa1] rounded-2xl shadow-xl border-4 border-[#d2b48c] scale-110 origin-top mt-2">
                     {board.map((token, idx) => (
                         <div 
                             key={idx}
                             onClick={() => handleBoardClick(idx)}
                             className={`
-                                w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+                                w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
                                 ${token ? 'hover:scale-105' : 'bg-[#f9e4c6] border-2 border-[#e6cca0] shadow-inner'}
                                 ${selectedCells.includes(idx) ? 'ring-4 ring-yellow-400 scale-110 z-10 shadow-lg' : ''}
                                 ${phase === 'USE_PRIVILEGE' && token && token !== COLORS.GOLD ? 'animate-pulse ring-4 ring-pink-400' : ''}
@@ -1401,14 +1475,14 @@ export default function SplendorDuel() {
                                 ${phase === 'ADD_TOKEN_SELECTION' && token && token !== pendingAddTokenColor ? 'opacity-50' : ''}
                             `}
                         >
-                            {token && <TokenIcon color={token} size="lg" />}
+                            {token && <TokenIcon color={token} size="xl" />}
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* 动作按钮栏 */}
-            <div className="flex flex-wrap justify-center gap-3 w-full">
+            <div className="flex flex-wrap justify-center gap-2 w-full mt-8">
                 {phase === 'OPTIONAL' && (
                     <>
                         <button 
@@ -1416,8 +1490,8 @@ export default function SplendorDuel() {
                             disabled={bag.length === 0}
                             className="flex flex-col items-center justify-center w-20 h-20 bg-white hover:bg-indigo-50 text-indigo-600 border-2 border-indigo-100 rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <RefreshCw size={24} className="mb-1" />
-                            <span className="text-[10px] font-bold">补充</span>
+                            <RefreshCw size={28} className="mb-1" />
+                            <span className="text-xs font-bold">刷新</span>
                         </button>
                         <button 
                             onClick={usePrivilege} 
@@ -1425,17 +1499,17 @@ export default function SplendorDuel() {
                             className="flex flex-col items-center justify-center w-20 h-20 bg-white hover:bg-pink-50 text-pink-600 border-2 border-pink-100 rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
                         >   
                             {currentPlayer.privileges > 0 && (
-                                <div className="absolute top-1 right-1 bg-pink-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">{currentPlayer.privileges}</div>
+                                <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{currentPlayer.privileges}</div>
                             )}
-                            <Scroll size={24} className="mb-1" />
-                            <span className="text-[10px] font-bold">卷轴</span>
+                            <Scroll size={28} className="mb-1" />
+                            <span className="text-xs font-bold">卷轴</span>
                         </button>
                     </>
                 )}
                 
                 {/* 代币确认 */}
                 {(phase === 'OPTIONAL' || phase === 'MANDATORY') && selectedCells.length > 0 && (
-                    <button onClick={confirmTakeTokens} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-xl shadow-lg shadow-slate-300 transition-all transform hover:-translate-y-1">
+                    <button onClick={confirmTakeTokens} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-xl shadow-lg shadow-slate-300 transition-all transform hover:-translate-y-1 mt-4">
                         <Check size={20} />
                         <span className="font-bold">拿取代币</span>
                     </button>
@@ -1492,12 +1566,12 @@ export default function SplendorDuel() {
             </div>
 
             {/* Log Panel (New) */}
-            <div className="w-full bg-white/50 rounded-xl border border-slate-200 max-h-32 overflow-y-auto p-2 text-xs text-slate-600 shadow-inner select-text">
+            <div className="w-full bg-white/50 rounded-xl border border-slate-200 max-h-32 overflow-y-auto p-2 text-sm text-slate-600 shadow-inner select-text">
                 <div className="font-bold text-slate-400 mb-1 sticky top-0 bg-white/80 backdrop-blur-sm px-1">游戏记录</div>
                 <div className="flex flex-col gap-1">
                     {logs.slice().sort((a, b) => b.id - a.id).map(log => (
                         <div key={log.id} className="flex gap-2">
-                            <span className="text-slate-400 font-mono text-[10px]">{log.time}</span>
+                            <span className="text-slate-400 font-mono text-xs">{log.time}</span>
                             <span>{log.text}</span>
                         </div>
                     ))}
@@ -1506,22 +1580,22 @@ export default function SplendorDuel() {
 
             {/* 皇家卡 */}
             {royals.length > 0 && (
-                <div className="w-full bg-slate-100 p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                        <Crown size={14} className="text-purple-500" />
-                        <span className="text-xs font-bold text-slate-400 uppercase">Royal Cards</span>
+                <div className="w-full bg-slate-100 p-2 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                        <Crown size={16} className="text-purple-500" />
+                        <span className="text-sm font-bold text-slate-400 uppercase">Royal Cards</span>
                     </div>
-                    <div className="flex gap-3 justify-center flex-wrap">
+                    <div className="flex gap-2 justify-center flex-wrap">
                         {royals.map(r => (
                             <div 
                                 key={r.id} 
-                                className={`w-28 h-16 bg-white border-2 border-purple-100 rounded-lg p-2 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm hover:border-purple-300 transition-colors
+                                className={`w-32 h-20 bg-white border-2 border-purple-100 rounded-lg p-2 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm hover:border-purple-300 transition-colors
                                     ${phase === 'ROYAL_SELECTION' ? 'ring-4 ring-yellow-400 animate-pulse cursor-pointer' : ''}
                                 `}
                                 onClick={() => phase === 'ROYAL_SELECTION' && selectRoyal(r)}
                             >
-                                <div className="font-black text-purple-800">{r.points} 分</div>
-                                <div className="text-[9px] text-slate-500 leading-tight mt-1">{r.text}</div>
+                                <div className="font-black text-xl text-purple-800">{r.points} 分</div>
+                                <div className="text-xs text-slate-500 leading-tight mt-1">{r.text}</div>
                             </div>
                         ))}
                     </div>
@@ -1530,35 +1604,39 @@ export default function SplendorDuel() {
         </div>
 
         {/* 右侧：玩家状态 */}
-        <div className="lg:col-span-3 space-y-4 order-3 overflow-y-auto max-h-[calc(100vh-100px)] pb-20">
+        <div className="lg:col-span-3 space-y-2 order-3 overflow-y-auto max-h-[calc(100vh-80px)] pb-20">
             {players.map((p) => {
                 const isCurrent = p.id === currentPlayer.id;
                 const bonus = getPlayerBonus(p);
                 const pointsByColor = getPlayerPointsByColor(p);
 
                 return (
-                    <div key={p.id} className={`p-4 rounded-2xl border-2 transition-all ${isCurrent ? 'bg-white border-blue-400 shadow-md' : 'bg-slate-50 border-transparent opacity-80 hover:opacity-100'}`}>
-                        <div className="flex justify-between items-center mb-3">
+                    <div key={p.id} className={`p-2 rounded-2xl border-2 transition-all ${isCurrent ? 'bg-white border-blue-400 shadow-md' : 'bg-slate-50 border-transparent opacity-80 hover:opacity-100'}`}>
+                        <div className="flex justify-between items-center mb-1">
                             <EditableName 
                                 name={p.name} 
                                 isCurrent={isCurrent} 
                                 onChange={(newName) => updatePlayerName(p.id, newName)} 
                             />
-                            <div className="flex gap-3 text-sm font-bold">
-                                <div className="flex items-center text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full"><Trophy size={14} className="mr-1"/>{p.points}</div>
-                                <div className="flex items-center text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full"><Crown size={14} className="mr-1"/>{p.crowns}</div>
+                            <div className="flex gap-2 text-base font-bold">
+                                <div id={`player-${p.id}-points`} className="flex items-center text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full relative">
+                                    <Trophy size={16} className="mr-1"/>{p.points}
+                                </div>
+                                <div id={`player-${p.id}-crowns`} className="flex items-center text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full relative">
+                                    <Crown size={16} className="mr-1"/>{p.crowns}
+                                </div>
                             </div>
                         </div>
 
                         {/* 特权卷轴展示 (Player Hand) */}
-                        <div className="flex gap-1 mb-3 min-h-[20px]">
+                        <div className="flex gap-1 mb-1 min-h-[20px]">
                             {[...Array(p.privileges)].map((_, i) => (
-                                <Scroll key={i} size={14} className="text-pink-400" />
+                                <Scroll key={i} size={16} className="text-pink-400" />
                             ))}
                         </div>
 
                         {/* 资源统计 (Tokens & Bonuses aligned) */}
-                        <div className="grid grid-cols-7 gap-1 mb-3 bg-slate-100/50 p-2 rounded-xl">
+                        <div className="grid grid-cols-7 gap-0.5 mb-1 bg-slate-100/50 p-1 rounded-xl">
                             {DISPLAY_COLORS.map(color => {
                                 const tokenCount = p.tokens[color] || 0;
                                 const bonusCount = bonus[color] || 0;
@@ -1569,6 +1647,7 @@ export default function SplendorDuel() {
                                     <div key={color} className="flex flex-col items-center gap-1">
                                         {/* Token */}
                                         <div 
+                                            id={`player-${p.id}-token-${color}`}
                                             className={`relative cursor-pointer transition-all ${tokenCount === 0 ? 'opacity-30 grayscale' : 'hover:scale-110'}`} 
                                             onClick={() => {
                                                 if (phase === 'DISCARD' && isCurrent) discardToken(color);
@@ -1585,9 +1664,9 @@ export default function SplendorDuel() {
 
                                         {/* Bonus Count */}
                                         {isBonusColor ? (
-                                            <div className={`flex flex-col items-center justify-center w-full h-10 rounded-lg shadow-sm border ${color === COLORS.WHITE ? '' : 'border-transparent'} ${COLOR_MAP[color].bg}`}>
-                                                <span className={`text-xs font-black ${color === COLORS.WHITE ? 'text-slate-800' : 'text-white drop-shadow-sm'}`}>{bonusCount}</span>
-                                                <span className={`text-[9px] font-bold leading-none ${
+                                            <div id={`player-${p.id}-bonus-${color}`} className={`flex flex-col items-center justify-center w-full h-11 rounded-lg shadow-sm border ${color === COLORS.WHITE ? '' : 'border-transparent'} ${COLOR_MAP[color].bg}`}>
+                                                <span className={`text-sm font-black ${color === COLORS.WHITE ? 'text-slate-800' : 'text-white drop-shadow-sm'}`}>{bonusCount}</span>
+                                                <span className={`text-[10px] font-bold leading-none ${
                                                     color === COLORS.WHITE 
                                                         ? (points >= 10 ? 'text-green-600 animate-pulse' : 'text-slate-400')
                                                         : (points >= 10 ? 'text-yellow-300 animate-pulse' : 'text-white/80')
@@ -1596,7 +1675,7 @@ export default function SplendorDuel() {
                                                 </span>
                                             </div>
                                         ) : (
-                                            <div className="w-full h-10"></div>
+                                            <div className="w-full h-11"></div>
                                         )}
                                     </div>
                                 );
@@ -1605,9 +1684,9 @@ export default function SplendorDuel() {
 
                         {/* 保留卡 */}
                         {p.reserved.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-slate-100">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Reserved Cards</div>
-                                <div className="flex gap-2 overflow-x-auto py-2">
+                            <div className="mt-1 pt-1 border-t border-slate-100">
+                                <div className="text-xs font-bold text-slate-400 uppercase mb-1">Reserved Cards</div>
+                                <div className="flex gap-2 overflow-x-auto py-1">
                                     {p.reserved.map(card => {
                                         const {missing} = calculateCost(card, p);
                                         const canBuy = missing <= (p.tokens[COLORS.GOLD] || 0);
@@ -1631,6 +1710,25 @@ export default function SplendorDuel() {
                     </div>
                 );
             })}
+            
+            {/* 公共区域：剩余卷轴 */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mt-2">
+                <div className="flex justify-between items-center">
+                    <div className="text-sm font-bold text-slate-500 uppercase flex items-center gap-2">
+                        <Scroll size={18} className="text-pink-500" />
+                        <span>剩余卷轴</span>
+                    </div>
+                    <div className="flex gap-2">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className={`transition-all duration-500 ${i < privilegeAvailable ? 'opacity-100 scale-100' : 'opacity-20 grayscale scale-90'}`}>
+                                <div className="bg-pink-100 p-2 rounded-lg shadow-sm border border-pink-200">
+                                    <Scroll size={20} className="text-pink-600" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
         </div>
 
       </div>
