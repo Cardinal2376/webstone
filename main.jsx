@@ -186,7 +186,7 @@ const createRoyals = () => {
 
 // --- 组件 ---
 
-const EditableName = ({ name, onChange, isCurrent }) => {
+const EditableName = ({ name, onChange, isCurrent, playerId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(name);
 
@@ -217,6 +217,7 @@ const EditableName = ({ name, onChange, isCurrent }) => {
 
   return (
     <span 
+      id={`player-${playerId}-name`}
       onClick={() => setIsEditing(true)}
       className={`font-bold text-xl cursor-pointer hover:underline decoration-dashed underline-offset-4 ${isCurrent ? 'text-slate-800' : 'text-slate-500'}`}
       title="点击修改名字"
@@ -382,6 +383,8 @@ export default function SplendorDuel() {
   // Temp state for Stick ability (attaching card)
   const [pendingStickCard, setPendingStickCard] = useState(null);
   const [pendingAddTokenColor, setPendingAddTokenColor] = useState(null); // For Add ability validation
+  
+  const [viewingPlayerCards, setViewingPlayerCards] = useState(null); // Player ID to show cards for
 
   // 初始化
   useEffect(() => {
@@ -739,6 +742,9 @@ export default function SplendorDuel() {
     p.privileges -= 1;
     setPrivilegeAvailable(prev => prev + 1);
 
+    showAnimation(`-1`, `#player-${p.id}-privilege-container`, 'text-red-500', 0, -20);
+    showAnimation(`+1`, `#player-${p.id}-token-${token}`, 'text-green-500', 0, -10);
+
     setBoard(newBoard);
     setPlayers(newPlayers);
     setPhase('OPTIONAL'); 
@@ -763,26 +769,48 @@ export default function SplendorDuel() {
     const newBoard = [...board];
     let bagIdx = 0;
     const currentBag = [...bag];
-
+    
+    // Collect empty positions in spiral order
+    const emptyPositions = [];
     for (let i = 0; i < SPIRAL_COORDS.length && bagIdx < currentBag.length; i++) {
       const {r, c} = SPIRAL_COORDS[i];
       const idx = r * 5 + c;
       if (newBoard[idx] === null) {
-        newBoard[idx] = currentBag[bagIdx++];
+        emptyPositions.push({ idx, token: currentBag[bagIdx++] });
       }
     }
 
+    // Clear board first
+    const clearedBoard = [...board];
+    emptyPositions.forEach(({ idx }) => {
+      clearedBoard[idx] = null;
+    });
+    setBoard(clearedBoard);
+
+    // Animate tokens appearing one by one
+    emptyPositions.forEach(({ idx, token }, index) => {
+      setTimeout(() => {
+        setBoard(prev => {
+          const updated = [...prev];
+          updated[idx] = token;
+          return updated;
+        });
+      }, index * 80); // 80ms delay between each token
+    });
+
     setBag(currentBag.slice(bagIdx));
-    setBoard(newBoard);
 
     const newPlayers = [...players];
     const oppIdx = turn === 0 ? 1 : 0;
     if (privilegeAvailable > 0) {
       newPlayers[oppIdx].privileges += 1;
       setPrivilegeAvailable(prev => prev - 1);
+      showAnimation(`+1`, `#player-${oppIdx}-privilege-container`, 'text-pink-500', 0, -20);
     } else if (newPlayers[turn].privileges > 0) {
        newPlayers[oppIdx].privileges += 1;
        newPlayers[turn].privileges = Math.max(0, newPlayers[turn].privileges - 1);
+       showAnimation(`-1`, `#player-${turn}-privilege-container`, 'text-red-500', 0, -20);
+       showAnimation(`+1`, `#player-${oppIdx}-privilege-container`, 'text-pink-500', 0, -20);
     }
     
     setPlayers(newPlayers);
@@ -933,10 +961,16 @@ export default function SplendorDuel() {
          opp.privileges++;
          setPrivilegeAvailable(prev => prev - 1);
          addLog(`触发特殊规则（同色/双珍珠）：对手获得一个卷轴`);
+         
+         showAnimation(`+1`, `#player-${opp.id}-privilege-container`, 'text-pink-500', 0, -20);
+
        } else if (p.privileges > 0) {
          opp.privileges++;
          p.privileges--;
          addLog(`触发特殊规则（同色/双珍珠）：对手抢夺一个卷轴`);
+
+         showAnimation(`-1`, `#player-${p.id}-privilege-container`, 'text-red-500', 0, -20);
+         showAnimation(`+1`, `#player-${opp.id}-privilege-container`, 'text-pink-500', 0, -20);
        }
     }
 
@@ -1155,6 +1189,7 @@ export default function SplendorDuel() {
       if (ability === 'recycle') { // AGAIN
           setMessage("再次行动！");
           addLog(`${p.name} 触发能力：再次行动`);
+          showAnimation("Again!", `#player-${p.id}-name`, 'text-indigo-500', 0, -40);
           setPhase('OPTIONAL'); 
           // Ensure players are updated if we modified them (we didn't here, but consistent)
           if(passedPlayers) setPlayers(activePlayers);
@@ -1162,9 +1197,12 @@ export default function SplendorDuel() {
           if (privilegeAvailable > 0) {
               p.privileges++;
               setPrivilegeAvailable(v => v-1);
+              showAnimation(`+1`, `#player-${p.id}-privilege-container`, 'text-pink-500', 0, -20);
           } else if (opp.privileges > 0) {
               opp.privileges--;
               p.privileges++;
+              showAnimation(`-1`, `#player-${opp.id}-privilege-container`, 'text-red-500', 0, -20);
+              showAnimation(`+1`, `#player-${p.id}-privilege-container`, 'text-pink-500', 0, -20);
           }
           addLog(`${p.name} 触发能力：获得卷轴`);
           setPlayers(activePlayers);
@@ -1616,6 +1654,7 @@ export default function SplendorDuel() {
                             <EditableName 
                                 name={p.name} 
                                 isCurrent={isCurrent} 
+                                playerId={p.id}
                                 onChange={(newName) => updatePlayerName(p.id, newName)} 
                             />
                             <div className="flex gap-2 text-base font-bold">
@@ -1629,14 +1668,14 @@ export default function SplendorDuel() {
                         </div>
 
                         {/* 特权卷轴展示 (Player Hand) */}
-                        <div className="flex gap-1 mb-1 min-h-[20px]">
+                        <div id={`player-${p.id}-privilege-container`} className="flex gap-1 mb-1 min-h-[20px]">
                             {[...Array(p.privileges)].map((_, i) => (
                                 <Scroll key={i} size={16} className="text-pink-400" />
                             ))}
                         </div>
 
                         {/* 资源统计 (Tokens & Bonuses aligned) */}
-                        <div className="grid grid-cols-7 gap-0.5 mb-1 bg-slate-100/50 p-1 rounded-xl">
+                        <div className="grid grid-cols-8 gap-0.5 mb-1 bg-slate-100/50 p-1 rounded-xl relative">
                             {DISPLAY_COLORS.map(color => {
                                 const tokenCount = p.tokens[color] || 0;
                                 const bonusCount = bonus[color] || 0;
@@ -1680,6 +1719,15 @@ export default function SplendorDuel() {
                                     </div>
                                 );
                             })}
+                            <div className="flex items-center justify-center">
+                                <button 
+                                    onClick={() => setViewingPlayerCards(p.id)}
+                                    className="bg-indigo-100 text-indigo-600 hover:bg-indigo-200 text-xs font-bold px-2 py-1 rounded-lg transition-colors whitespace-nowrap"
+                                    title="查看所有已购卡牌"
+                                >
+                                    展开
+                                </button>
+                            </div>
                         </div>
 
                         {/* 保留卡 */}
@@ -1755,6 +1803,48 @@ export default function SplendorDuel() {
                  )}
              </div>
          </div>
+      )}
+
+      {/* View Player Cards Modal */}
+      {viewingPlayerCards !== null && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setViewingPlayerCards(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                  <div className="p-4 border-b flex justify-between items-center">
+                      <h3 className="text-xl font-bold text-slate-800">
+                          {players[viewingPlayerCards].name} 的卡牌 ({players[viewingPlayerCards].cards.length})
+                      </h3>
+                      <button onClick={() => setViewingPlayerCards(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                          <X size={24} className="text-slate-500" />
+                      </button>
+                  </div>
+                  <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+                      <div className="flex flex-wrap gap-3 justify-center">
+                          {players[viewingPlayerCards].cards
+                              .slice()
+                              .sort((a, b) => {
+                                  // Sort by color index based on DISPLAY_COLORS
+                                  const colorA = a.bonusColor || 'z'; // 'z' for no color (end)
+                                  const colorB = b.bonusColor || 'z';
+                                  const indexA = DISPLAY_COLORS.indexOf(colorA);
+                                  const indexB = DISPLAY_COLORS.indexOf(colorB);
+                                  // Handle cases where color might not be in DISPLAY_COLORS (e.g. GREY/Stick)
+                                  const safeIndexA = indexA === -1 ? 99 : indexA;
+                                  const safeIndexB = indexB === -1 ? 99 : indexB;
+                                  
+                                  if (safeIndexA !== safeIndexB) return safeIndexA - safeIndexB;
+                                  // Secondary sort by points
+                                  return b.points - a.points;
+                              })
+                              .map(card => (
+                                  <CardView key={card.id} card={card} />
+                          ))}
+                          {players[viewingPlayerCards].cards.length === 0 && (
+                              <div className="text-slate-400 font-bold italic py-10">暂无卡牌</div>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );
