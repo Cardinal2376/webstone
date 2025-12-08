@@ -1263,8 +1263,18 @@ export default function SplendorDuel() {
       setPlayers(newPlayers);
       setPendingStickCard(null);
       
-      // Check Royal?
-      endTurn();
+      // Check Royal Trigger (re-evaluate because Royal phase was skipped for Stick selection)
+      const crowns = p.crowns;
+      const cardCrowns = pendingStickCard.crowns || 0;
+      const triggerRoyal = (crowns >= 3 && crowns - cardCrowns < 3) || 
+                           (crowns >= 6 && crowns - cardCrowns < 6);
+
+      if (triggerRoyal && royals.length > 0) {
+          setPhase('ROYAL_SELECTION');
+          setMessage("恭喜获得皇冠！请选择皇家卡。");
+      } else {
+          endTurn();
+      }
   };
 
   const handleStealSelection = (color) => {
