@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import zhubaoImg from './images/zhubao.jpg';
 import meibaoImg from './images/meibao.jpg';
-import { Crown, Diamond, Scroll, RefreshCw, Trophy, AlertCircle, Play, Save, X, RotateCcw, Check, Hexagon, Hand } from 'lucide-react';
+import { Crown, Diamond, Scroll, RefreshCw, Trophy, AlertCircle, Play, Save, X, RotateCcw, Check, Hexagon, Hand, Dices, ArrowLeftRight } from 'lucide-react';
 
 // --- 常量定义 ---
 
@@ -190,6 +190,10 @@ const EditableName = ({ name, onChange, isCurrent, playerId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(name);
 
+  useEffect(() => {
+    setTempName(name);
+  }, [name]);
+
   const handleSave = () => {
     if (tempName.trim()) {
       onChange(tempName);
@@ -360,6 +364,11 @@ export default function SplendorDuel() {
   const [hasRefilled, setHasRefilled] = useState(false);
   const [logs, setLogs] = useState([]); // Game logs
   const [isProcessing, setIsProcessing] = useState(false); // Prevent rapid clicks
+
+  // Dice State
+  const [showDice, setShowDice] = useState(false);
+  const [diceValue, setDiceValue] = useState(1);
+  const [isRolling, setIsRolling] = useState(false);
 
   // Animation State
   const [animations, setAnimations] = useState([]); // [{ id, text, x, y, color }]
@@ -600,8 +609,8 @@ export default function SplendorDuel() {
     setBoard(newBoard);
     setRoyals(createRoyals());
     setPlayers([
-      { id: 0, name: '玩家 1 (先手)', tokens: {}, cards: [], reserved: [], privileges: 0, crowns: 0, points: 0 },
-      { id: 1, name: '玩家 2', tokens: {}, cards: [], reserved: [], privileges: 1, crowns: 0, points: 0 }
+      { id: 0, name: '猪宝', tokens: {}, cards: [], reserved: [], privileges: 0, crowns: 0, points: 0 },
+      { id: 1, name: '妹宝', tokens: {}, cards: [], reserved: [], privileges: 1, crowns: 0, points: 0 }
     ]);
     setPrivilegeAvailable(2); 
     setTurn(0);
@@ -1345,6 +1354,32 @@ export default function SplendorDuel() {
       setPlayers(newPlayers);
   };
 
+  const swapPlayerNames = () => {
+    setPlayers(prev => {
+        const newPlayers = [
+            { ...prev[0], name: prev[1].name },
+            { ...prev[1], name: prev[0].name }
+        ];
+        return newPlayers;
+    });
+    addLog("交换了先后手（玩家名称）");
+    setMessage(`已交换先后手：${players[1].name} ⟷ ${players[0].name}`);
+  };
+
+  const rollDice = () => {
+    setShowDice(true);
+    setIsRolling(true);
+    let count = 0;
+    const interval = setInterval(() => {
+        setDiceValue(Math.floor(Math.random() * 6) + 1);
+        count++;
+        if (count > 20) { // Roll for ~2 seconds
+            clearInterval(interval);
+            setIsRolling(false);
+        }
+    }, 100);
+  };
+
   // --- 渲染 ---
 
     return (
@@ -1375,6 +1410,22 @@ export default function SplendorDuel() {
         <div className="flex items-center gap-4">
              {/* Action Buttons */}
              <div className="flex items-center gap-2 mr-2">
+                <button 
+                    onClick={rollDice}
+                    className="flex items-center gap-1 text-purple-500 hover:text-purple-700 transition-colors mr-2"
+                    title="掷骰子"
+                >
+                    <Dices size={20} />
+                    <span className="text-base font-bold">骰子</span>
+                </button>
+                <button 
+                    onClick={swapPlayerNames}
+                    className="flex items-center gap-1 text-orange-500 hover:text-orange-700 transition-colors mr-2"
+                    title="交换先/后手名字"
+                >
+                    <ArrowLeftRight size={20} />
+                    <span className="text-base font-bold">交换</span>
+                </button>
                 <button 
                     onClick={undo}
                     disabled={history.length === 0}
@@ -1662,6 +1713,7 @@ export default function SplendorDuel() {
                     <div key={p.id} className={`p-2 rounded-2xl border-2 transition-all ${isCurrent ? 'bg-white border-blue-400 shadow-md' : 'bg-slate-50 border-transparent opacity-80 hover:opacity-100'}`}>
                         <div className="flex justify-between items-center mb-1">
                             <EditableName 
+                                key={`${p.id}-${p.name}`}
                                 name={p.name} 
                                 isCurrent={isCurrent} 
                                 playerId={p.id}
@@ -1813,6 +1865,32 @@ export default function SplendorDuel() {
                  )}
              </div>
          </div>
+      )}
+
+      {/* Dice Modal */}
+      {showDice && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center" onClick={() => !isRolling && setShowDice(false)}>
+            <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-bounce-in" onClick={e => e.stopPropagation()}>
+                <h3 className="text-2xl font-black text-slate-800 mb-6">🎲 掷骰子</h3>
+                
+                <div className={`w-32 h-32 bg-red-500 rounded-2xl shadow-inner border-4 border-red-600 flex items-center justify-center transition-transform duration-100 ${isRolling ? 'animate-spin' : ''}`}>
+                    <span className="text-white font-black text-6xl drop-shadow-md">{diceValue}</span>
+                </div>
+
+                <div className="mt-8 text-slate-500 font-bold text-lg">
+                    {isRolling ? 'Rolling...' : '点击空白处关闭'}
+                </div>
+                
+                {!isRolling && (
+                    <button 
+                        onClick={rollDice}
+                        className="mt-4 px-6 py-2 bg-slate-100 hover:text-slate-800 rounded-full font-bold transition-colors"
+                    >
+                        再掷一次
+                    </button>
+                )}
+            </div>
+        </div>
       )}
 
       {/* View Player Cards Modal */}
